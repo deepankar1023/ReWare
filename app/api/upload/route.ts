@@ -6,34 +6,25 @@ export async function POST(request: NextRequest) {
   try {
     const userPayload = await getUserFromRequest(request)
     if (!userPayload) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
 
-    const formData = await request.formData()
-    const file = formData.get("file") as File
+    const { searchParams } = new URL(request.url)
+    const filename = searchParams.get("filename")
 
-    if (!file) {
-      return NextResponse.json({ error: "No file provided" }, { status: 400 })
+    if (!filename) {
+      return NextResponse.json({ error: "Filename is required" }, { status: 400 })
     }
 
-    // Validate file type
-    if (!file.type.startsWith("image/")) {
-      return NextResponse.json({ error: "Only image files are allowed" }, { status: 400 })
-    }
+    const body = await request.blob()
 
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      return NextResponse.json({ error: "File size must be less than 5MB" }, { status: 400 })
-    }
-
-    const filename = `${Date.now()}-${file.name}`
-    const blob = await put(filename, file, {
+    const blob = await put(filename, body, {
       access: "public",
     })
 
     return NextResponse.json({ url: blob.url })
   } catch (error) {
     console.error("Upload error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return NextResponse.json({ error: "Upload failed" }, { status: 500 })
   }
 }

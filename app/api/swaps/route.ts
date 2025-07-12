@@ -1,8 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import connectDB from "@/lib/mongodb"
 import Swap from "@/models/Swap"
-import Item from "@/models/Item"
 import User from "@/models/User"
+import Item from "@/models/Item"
 import { getUserFromRequest } from "@/lib/auth"
 
 export async function GET(request: NextRequest) {
@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
 
     const userPayload = await getUserFromRequest(request)
     if (!userPayload) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
 
     const { searchParams } = new URL(request.url)
@@ -47,12 +47,17 @@ export async function POST(request: NextRequest) {
 
     const userPayload = await getUserFromRequest(request)
     if (!userPayload) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
 
-    const { requestedItemId, offeredItemId, pointsOffered, message, type } = await request.json()
+    const { requestedItemId, offeredItemId, pointsOffered, type, message } = await request.json()
 
-    // Get the requested item and its owner
+    // Validate input
+    if (!requestedItemId || !type) {
+      return NextResponse.json({ error: "Required fields missing" }, { status: 400 })
+    }
+
+    // Get the requested item
     const requestedItem = await Item.findById(requestedItemId)
     if (!requestedItem) {
       return NextResponse.json({ error: "Requested item not found" }, { status: 404 })
@@ -64,18 +69,23 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate swap type
+    if (type === "item-swap" && !offeredItemId) {
+      return NextResponse.json({ error: "Offered item required for item swap" }, { status: 400 })
+    }
+
+    if (type === "points-redemption" && !pointsOffered) {
+      return NextResponse.json({ error: "Points amount required for points redemption" }, { status: 400 })
+    }
+
+    // For points redemption, check if user has enough points
     if (type === "points-redemption") {
       const user = await User.findById(userPayload.userId)
       if (!user || user.points < pointsOffered) {
         return NextResponse.json({ error: "Insufficient points" }, { status: 400 })
       }
-    } else if (type === "item-swap") {
-      const offeredItem = await Item.findById(offeredItemId)
-      if (!offeredItem || offeredItem.owner.toString() !== userPayload.userId) {
-        return NextResponse.json({ error: "Invalid offered item" }, { status: 400 })
-      }
     }
 
+    // Create swap
     const swap = await Swap.create({
       requester: userPayload.userId,
       owner: requestedItem.owner,
@@ -92,7 +102,7 @@ export async function POST(request: NextRequest) {
       .populate("requestedItem", "title images pointsValue")
       .populate("offeredItem", "title images pointsValue")
 
-    return NextResponse.json({ swap: populatedSwap })
+    return NextResponse.json({ swap: populatedSwap }, { status: 201 })
   } catch (error) {
     console.error("Create swap error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

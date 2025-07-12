@@ -11,29 +11,41 @@ export async function GET(request: NextRequest) {
 
     const userPayload = await getUserFromRequest(request)
     if (!userPayload || userPayload.role !== "admin") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 })
     }
 
-    const [totalUsers, totalItems, pendingItems, approvedItems, totalSwaps, completedSwaps] = await Promise.all([
-      User.countDocuments({ role: "user" }),
-      Item.countDocuments(),
-      Item.countDocuments({ status: "pending" }),
-      Item.countDocuments({ status: "approved" }),
-      Swap.countDocuments(),
-      Swap.countDocuments({ status: "completed" }),
-    ])
+    // Get basic stats
+    const totalUsers = await User.countDocuments()
+    const totalItems = await Item.countDocuments()
+    const pendingItems = await Item.countDocuments({ status: "pending" })
+    const approvedItems = await Item.countDocuments({ status: "approved" })
+    const totalSwaps = await Swap.countDocuments()
+    const completedSwaps = await Swap.countDocuments({ status: "completed" })
 
-    const stats = {
-      totalUsers,
-      totalItems,
-      pendingItems,
-      approvedItems,
-      totalSwaps,
-      completedSwaps,
-      activeUsers: totalUsers, // Simplified for now
-    }
+    // Get recent activity
+    const recentItems = await Item.find().populate("owner", "name").sort({ createdAt: -1 }).limit(5)
 
-    return NextResponse.json({ stats })
+    const recentSwaps = await Swap.find()
+      .populate("requester", "name")
+      .populate("owner", "name")
+      .populate("requestedItem", "title")
+      .sort({ createdAt: -1 })
+      .limit(5)
+
+    return NextResponse.json({
+      stats: {
+        totalUsers,
+        totalItems,
+        pendingItems,
+        approvedItems,
+        totalSwaps,
+        completedSwaps,
+      },
+      recentActivity: {
+        items: recentItems,
+        swaps: recentSwaps,
+      },
+    })
   } catch (error) {
     console.error("Get admin stats error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

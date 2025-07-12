@@ -9,26 +9,22 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
     const userPayload = await getUserFromRequest(request)
     if (!userPayload || userPayload.role !== "admin") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 })
     }
 
     const { reason } = await request.json()
 
-    const item = await Item.findByIdAndUpdate(
-      params.id,
-      {
-        status: "rejected",
-        rejectionReason: reason,
-        approvedBy: userPayload.userId,
-      },
-      { new: true },
-    ).populate("owner", "name email")
-
+    const item = await Item.findById(params.id)
     if (!item) {
       return NextResponse.json({ error: "Item not found" }, { status: 404 })
     }
 
-    return NextResponse.json({ item })
+    // Update item status
+    item.status = "rejected"
+    item.rejectionReason = reason
+    await item.save()
+
+    return NextResponse.json({ message: "Item rejected successfully", item })
   } catch (error) {
     console.error("Reject item error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

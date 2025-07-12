@@ -5,7 +5,7 @@ const bcrypt = require("bcryptjs")
 const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/rewear"
 
 // Define schemas (simplified for seeding)
-const userSchema = new mongoose.Schema({
+const UserSchema = new mongoose.Schema({
   name: String,
   email: String,
   password: String,
@@ -20,14 +20,14 @@ const userSchema = new mongoose.Schema({
   totalSwaps: { type: Number, default: 0 },
 })
 
-const categorySchema = new mongoose.Schema({
+const CategorySchema = new mongoose.Schema({
   name: String,
   description: String,
   icon: String,
   isActive: { type: Boolean, default: true },
 })
 
-const itemSchema = new mongoose.Schema({
+const ItemSchema = new mongoose.Schema({
   title: String,
   description: String,
   category: String,
@@ -43,48 +43,51 @@ const itemSchema = new mongoose.Schema({
   status: { type: String, default: "approved" },
   isAvailable: { type: Boolean, default: true },
   swapPreferences: [String],
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now },
   views: { type: Number, default: 0 },
   favorites: { type: Number, default: 0 },
+  createdAt: { type: Date, default: Date.now },
 })
 
 // Create models
-const User = mongoose.models.User || mongoose.model("User", userSchema)
-const Category = mongoose.models.Category || mongoose.model("Category", categorySchema)
-const Item = mongoose.models.Item || mongoose.model("Item", itemSchema)
+const User = mongoose.models.User || mongoose.model("User", UserSchema)
+const Category = mongoose.models.Category || mongoose.model("Category", CategorySchema)
+const Item = mongoose.models.Item || mongoose.model("Item", ItemSchema)
 
 async function seedDatabase() {
   try {
+    console.log("🌱 Starting database seeding...")
+
+    // Connect to MongoDB
     await mongoose.connect(MONGODB_URI)
-    console.log("Connected to MongoDB")
+    console.log("✅ Connected to MongoDB")
 
     // Clear existing data
     await User.deleteMany({})
     await Category.deleteMany({})
     await Item.deleteMany({})
-    console.log("Cleared existing data")
+    console.log("🗑️ Cleared existing data")
 
-    // Create users
+    // Hash password
     const hashedPassword = await bcrypt.hash("password123", 12)
 
-    const users = await User.insertMany([
+    // Create users
+    const users = await User.create([
       {
         name: "Admin User",
         email: "admin@rewear.com",
         password: hashedPassword,
         role: "admin",
         points: 1000,
-        avatar: "/placeholder-user.jpg",
         bio: "Platform administrator",
         location: "New York, NY",
+        rating: 5.0,
+        totalSwaps: 0,
       },
       {
         name: "Sarah Johnson",
         email: "sarah@example.com",
         password: hashedPassword,
         points: 250,
-        avatar: "/placeholder-user.jpg",
         bio: "Fashion enthusiast and sustainable living advocate",
         location: "Los Angeles, CA",
         rating: 4.8,
@@ -95,8 +98,7 @@ async function seedDatabase() {
         email: "mike@example.com",
         password: hashedPassword,
         points: 180,
-        avatar: "/placeholder-user.jpg",
-        bio: "Love finding unique vintage pieces",
+        bio: "Minimalist lifestyle, love trading quality pieces",
         location: "San Francisco, CA",
         rating: 4.9,
         totalSwaps: 8,
@@ -106,18 +108,17 @@ async function seedDatabase() {
         email: "emma@example.com",
         password: hashedPassword,
         points: 320,
-        avatar: "/placeholder-user.jpg",
-        bio: "Minimalist wardrobe, maximum style",
-        location: "Seattle, WA",
+        bio: "Vintage collector and eco-conscious shopper",
+        location: "Portland, OR",
         rating: 4.7,
         totalSwaps: 15,
       },
     ])
 
-    console.log("Created users")
+    console.log("👥 Created users")
 
     // Create categories
-    const categories = await Category.insertMany([
+    const categories = await Category.create([
       {
         name: "Tops",
         description: "T-shirts, blouses, sweaters, and more",
@@ -140,7 +141,7 @@ async function seedDatabase() {
       },
       {
         name: "Shoes",
-        description: "Sneakers, boots, heels, and flats",
+        description: "Sneakers, boots, heels, and sandals",
         icon: "Shoe",
       },
       {
@@ -150,14 +151,13 @@ async function seedDatabase() {
       },
     ])
 
-    console.log("Created categories")
+    console.log("📂 Created categories")
 
     // Create sample items
     const sampleItems = [
       {
         title: "Vintage Levi's Denim Jacket",
-        description:
-          "Classic blue denim jacket in excellent condition. Perfect for layering and adding a vintage touch to any outfit.",
+        description: "Classic blue denim jacket in excellent condition. Perfect for layering!",
         category: "Outerwear",
         type: "Jacket",
         size: "M",
@@ -172,13 +172,13 @@ async function seedDatabase() {
       },
       {
         title: "Floral Summer Dress",
-        description: "Beautiful floral print dress perfect for summer occasions. Lightweight and comfortable fabric.",
+        description: "Beautiful floral print dress, perfect for summer occasions.",
         category: "Dresses",
         type: "Casual Dress",
         size: "S",
         condition: "like-new",
         brand: "Zara",
-        color: "Floral",
+        color: "Multicolor",
         images: ["/placeholder.jpg"],
         tags: ["floral", "summer", "casual"],
         owner: users[2]._id,
@@ -186,80 +186,81 @@ async function seedDatabase() {
         swapPreferences: ["Dresses", "Tops"],
       },
       {
-        title: "Black Leather Boots",
-        description: "Stylish black leather ankle boots. Great for both casual and formal occasions.",
+        title: "Nike Air Max Sneakers",
+        description: "Comfortable running shoes in great condition. Size 9.",
         category: "Shoes",
-        type: "Boots",
-        size: "8",
+        type: "Sneakers",
+        size: "9",
         condition: "good",
-        brand: "Dr. Martens",
-        color: "Black",
+        brand: "Nike",
+        color: "White",
         images: ["/placeholder.jpg"],
-        tags: ["leather", "boots", "versatile"],
+        tags: ["nike", "sneakers", "running"],
         owner: users[3]._id,
         pointsValue: 60,
-        swapPreferences: ["Shoes", "Accessories"],
+        swapPreferences: ["Shoes", "Activewear"],
       },
       {
         title: "Cashmere Sweater",
-        description: "Luxurious cashmere sweater in cream color. Super soft and warm for winter.",
+        description: "Luxurious cashmere sweater in cream color. Very soft and warm.",
         category: "Tops",
         type: "Sweater",
-        size: "M",
-        condition: "new",
+        size: "L",
+        condition: "like-new",
         brand: "Uniqlo",
         color: "Cream",
         images: ["/placeholder.jpg"],
-        tags: ["cashmere", "luxury", "winter"],
+        tags: ["cashmere", "luxury", "warm"],
         owner: users[1]._id,
-        pointsValue: 100,
+        pointsValue: 80,
         swapPreferences: ["Tops", "Outerwear"],
       },
       {
-        title: "High-Waisted Jeans",
-        description: "Trendy high-waisted jeans in dark wash. Flattering fit and comfortable stretch.",
+        title: "High-Waisted Black Jeans",
+        description: "Trendy high-waisted jeans that are super comfortable and flattering.",
         category: "Bottoms",
         type: "Jeans",
-        size: "29",
-        condition: "like-new",
+        size: "28",
+        condition: "good",
         brand: "American Eagle",
-        color: "Dark Blue",
+        color: "Black",
         images: ["/placeholder.jpg"],
-        tags: ["high-waisted", "trendy", "comfortable"],
+        tags: ["high-waisted", "black", "trendy"],
         owner: users[2]._id,
-        pointsValue: 80,
-        swapPreferences: ["Bottoms", "Tops"],
+        pointsValue: 60,
+        swapPreferences: ["Bottoms", "Dresses"],
       },
       {
-        title: "Designer Handbag",
-        description: "Elegant designer handbag in excellent condition. Perfect for special occasions.",
+        title: "Leather Crossbody Bag",
+        description: "Genuine leather crossbody bag in brown. Perfect for everyday use.",
         category: "Accessories",
-        type: "Handbag",
+        type: "Bag",
         size: "One Size",
         condition: "good",
-        brand: "Michael Kors",
+        brand: "Coach",
         color: "Brown",
         images: ["/placeholder.jpg"],
-        tags: ["designer", "elegant", "luxury"],
+        tags: ["leather", "crossbody", "everyday"],
         owner: users[3]._id,
         pointsValue: 60,
         swapPreferences: ["Accessories", "Shoes"],
       },
     ]
 
-    await Item.insertMany(sampleItems)
-    console.log("Created sample items")
+    await Item.create(sampleItems)
+    console.log("👕 Created sample items")
 
-    console.log("Database seeded successfully!")
-    console.log("\nDefault login credentials:")
+    console.log("🎉 Database seeding completed successfully!")
+    console.log("\n📋 Login credentials:")
     console.log("Admin: admin@rewear.com / password123")
     console.log("User: sarah@example.com / password123")
+
+    process.exit(0)
   } catch (error) {
-    console.error("Error seeding database:", error)
-  } finally {
-    await mongoose.disconnect()
-    console.log("Disconnected from MongoDB")
+    console.error("❌ Seeding failed:", error)
+    process.exit(1)
   }
 }
 
+// Run the seeding
 seedDatabase()

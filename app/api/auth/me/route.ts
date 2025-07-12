@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
 
     const userPayload = await getUserFromRequest(request)
     if (!userPayload) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
     }
 
     const user = await User.findById(userPayload.userId).select("-password")

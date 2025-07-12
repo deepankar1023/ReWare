@@ -7,26 +7,24 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Recycle, Eye, EyeOff } from "lucide-react"
+import { Recycle, Eye, EyeOff, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
+    name: "",
     email: "",
     password: "",
     confirmPassword: "",
   })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [agreeToTerms, setAgreeToTerms] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
@@ -35,23 +33,55 @@ export default function SignupPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (formData.password !== formData.confirmPassword) {
-      alert("Passwords don't match!")
-      return
-    }
-    if (!agreeToTerms) {
-      alert("Please agree to the terms and conditions")
-      return
-    }
-
     setIsLoading(true)
 
-    // Simulate signup process
-    setTimeout(() => {
+    // Validate passwords match
+    if (formData.password !== formData.confirmPassword) {
+      toast.error("Passwords do not match")
       setIsLoading(false)
-      // For demo purposes, redirect to dashboard
-      router.push("/dashboard")
-    }, 1000)
+      return
+    }
+
+    // Validate password length
+    if (formData.password.length < 6) {
+      toast.error("Password must be at least 6 characters")
+      setIsLoading(false)
+      return
+    }
+
+    try {
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        toast.success("Account created successfully!")
+
+        // Store user data in localStorage
+        localStorage.setItem("user", JSON.stringify(data.user))
+        localStorage.setItem("token", data.token)
+
+        // Redirect to dashboard
+        router.push("/dashboard")
+      } else {
+        toast.error(data.error || "Registration failed")
+      }
+    } catch (error) {
+      console.error("Registration error:", error)
+      toast.error("Something went wrong. Please try again.")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -62,40 +92,29 @@ export default function SignupPage() {
             <Recycle className="h-8 w-8 text-green-600" />
             <span className="text-2xl font-bold text-gray-900">ReWear</span>
           </Link>
-          <h1 className="text-2xl font-bold text-gray-900">Join ReWear</h1>
-          <p className="text-gray-600 mt-2">Create your account and start sustainable fashion swapping</p>
+          <h1 className="text-2xl font-bold text-gray-900">Create Account</h1>
+          <p className="text-gray-600 mt-2">Join the sustainable fashion community</p>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Create Account</CardTitle>
-            <CardDescription>Fill in your details to get started</CardDescription>
+            <CardTitle>Sign Up</CardTitle>
+            <CardDescription>Create your account to start swapping clothes</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="firstName">First Name</Label>
-                  <Input
-                    id="firstName"
-                    name="firstName"
-                    placeholder="John"
-                    value={formData.firstName}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="lastName">Last Name</Label>
-                  <Input
-                    id="lastName"
-                    name="lastName"
-                    placeholder="Doe"
-                    value={formData.lastName}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="name">Full Name</Label>
+                <Input
+                  id="name"
+                  name="name"
+                  type="text"
+                  placeholder="Enter your full name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  required
+                  disabled={isLoading}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
@@ -103,10 +122,11 @@ export default function SignupPage() {
                   id="email"
                   name="email"
                   type="email"
-                  placeholder="john@example.com"
+                  placeholder="Enter your email"
                   value={formData.email}
-                  onChange={handleInputChange}
+                  onChange={handleChange}
                   required
+                  disabled={isLoading}
                 />
               </div>
               <div className="space-y-2">
@@ -116,10 +136,11 @@ export default function SignupPage() {
                     id="password"
                     name="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Create a strong password"
+                    placeholder="Create a password"
                     value={formData.password}
-                    onChange={handleInputChange}
+                    onChange={handleChange}
                     required
+                    disabled={isLoading}
                   />
                   <Button
                     type="button"
@@ -127,6 +148,7 @@ export default function SignupPage() {
                     size="sm"
                     className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowPassword(!showPassword)}
+                    disabled={isLoading}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
@@ -141,8 +163,9 @@ export default function SignupPage() {
                     type={showConfirmPassword ? "text" : "password"}
                     placeholder="Confirm your password"
                     value={formData.confirmPassword}
-                    onChange={handleInputChange}
+                    onChange={handleChange}
                     required
+                    disabled={isLoading}
                   />
                   <Button
                     type="button"
@@ -150,30 +173,21 @@ export default function SignupPage() {
                     size="sm"
                     className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    disabled={isLoading}
                   >
                     {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
                 </div>
               </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="terms"
-                  checked={agreeToTerms}
-                  onCheckedChange={(checked) => setAgreeToTerms(checked as boolean)}
-                />
-                <Label htmlFor="terms" className="text-sm">
-                  I agree to the{" "}
-                  <Link href="/terms" className="text-green-600 hover:underline">
-                    Terms of Service
-                  </Link>{" "}
-                  and{" "}
-                  <Link href="/privacy" className="text-green-600 hover:underline">
-                    Privacy Policy
-                  </Link>
-                </Label>
-              </div>
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Creating Account..." : "Create Account"}
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating account...
+                  </>
+                ) : (
+                  "Create Account"
+                )}
               </Button>
             </form>
             <div className="mt-6 text-center">

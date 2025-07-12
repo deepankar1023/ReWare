@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
 
     const userPayload = await getUserFromRequest(request)
     if (!userPayload || userPayload.role !== "admin") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 })
     }
 
     const { searchParams } = new URL(request.url)
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit
 
     const items = await Item.find({ status })
-      .populate("owner", "name email avatar")
+      .populate("owner", "name email")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
