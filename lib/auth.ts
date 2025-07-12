@@ -8,6 +8,8 @@ export interface JWTPayload {
   userId: string
   email: string
   role: string
+  firstName: string
+  lastName: string
 }
 
 export function generateToken(payload: JWTPayload): string {
